@@ -94,6 +94,3 @@ class Apis(
                 'response': info_query['response']['fail'],
                 'exept': connect['info'].replace('"',"'")
                 }
-
-if __name__ == '__main__':
-    user = Apis('1')
