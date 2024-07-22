@@ -1,0 +1,55 @@
+{
+    "default": {
+        "cellType": "text",
+        "editable": true,
+        "show": false
+    },
+    "data_students":{
+        "נוכחות": {
+            "type": "singleSelect",
+            "editable": true,
+            "valueOptions":  [
+                { "value": "0", "label": "חסר", "color": "error"},
+                { "value": "100", "label": "נוכח" ,"color": "success"}, 
+                { "value": "viza", "label": "באישור" ,"color":"info"}, 
+                { "value": "late", "label": "איחר" , "color": "warning"}
+            ],
+            "show": true,
+            "cellType": "select",
+            "summery": "mean"
+        },
+        "יום": {
+            "function": "heberw_date",
+            "cellType": "select",
+            "show": false
+        }
+    },
+    "summery": {
+        "last_week": {
+            "cellType": "text",
+            "editable": true,
+            "show": true,
+            "summery": "mean"
+        },
+        "last_week_seder":{
+            "cellType": "text",
+            "editable": true,
+            "show": true,
+            "summery": "mean"
+        }
+    
+    },
+    "info_students":{
+        "חדר":{
+            "cellType": "text",
+            "editable": true,
+            "show": false,
+            "summery": "list"
+        },
+        "שם_מלא":{
+            "cellType": "text",
+            "editable": true,
+            "show": true
+        }
+    }
+}

@@ -1,0 +1,15 @@
+id,type,name,password,group
+1,admin,zalman,1234,à
+2,noraml,shalom,770,á
+3,noraml,yossi,5764,
+4,noraml,zano,5784,
+5,admin,yosi,1234,á
+6,admin,aba,1234,à
+7,noraml,à,1,à
+8,noraml,á,2,á
+9,noraml,â,3,â
+a0547479921@gmail.com,admin,a0547479921@gmail.com,aaa111,à
+shalomlvitin@gmail.com,admin,shalomlvitin@gmail.com,aaa111,á
+shiura7701@gmail.com,admin,Shiura7701@gmail.com,12345678,à
+shiurb770@gmail.com,admin,Shiura7701@gmail.com,12345678,á
+shiurc7701@gmail.com,admin,Shiura7701@gmail.com,12345678,â

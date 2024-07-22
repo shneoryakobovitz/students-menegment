@@ -1,0 +1,358 @@
+{
+    "tables": {
+        "timing_next_seder": {
+            "source": "query",
+            "query": "select timesQמשעה from times where timesQיום = '2024-03-14' and timesQמשעה  >= {function:time_now} and timesQעד_שעה >= {function:time_now} limit 1"
+        
+        },
+        "seder_now":{
+            "source": "query",
+            "query": "select timesQסדר from times where timesQיום = '{function:date_now}' and timesQמשעה <= '{function:time_now}' and timesQעד_שעה >= '{function:time_now}' ",
+            "refresh": {"type":"timing", "timing": 30}
+        },
+        
+        "data_seder_now": {
+            "source": "query",
+            "query": "SELECT data_students.*,info_students.info_studentsQשיעור, info_students.info_studentsQחדר, CONCAT(info_students.info_studentsQמשפחה ,' ', info_students.info_studentsQשם) AS info_studentsQשם_מלא FROM data_students LEFT JOIN info_students ON data_students.data_studentsQid = info_students.info_studentsQid WHERE  data_studentsQסדר = '{table:seder_now}' and data_studentsQיום = '{function:date_now}' and info_studentsQשיעור = '{user:group}' ;",
+            "refresh": {"type":"timing", "timing": 30},
+            "manipulation": [
+                {
+                    "function": "merge",
+                    "right": "tbltimes", 
+                    "left": "self",
+                    "right_on": ["timesQיום", "timesQסדר"],
+                    "left_on": ["data_studentsQיום", "data_studentsQסדר"] 
+                },
+                {"function":"if_empty", "table":"insert_seder"}
+            ]
+        },
+        "last_week":{
+            "source": "query",
+            "query": "SELECT data_studentsQid, CAST(AVG(data_studentsQנוכחות) AS SIGNED) AS summeryQlast_week FROM (SELECT data_studentsQid, data_studentsQנוכחות FROM data_students LIMIT 3300) AS limited_data_students GROUP BY data_studentsQid;"
+        },
+        "last_week_seder": {
+            "source": "query",
+            "query": "SELECT data_studentsQid, CAST(AVG(data_studentsQנוכחות) AS SIGNED) AS summeryQlast_week_seder FROM (SELECT data_studentsQid, data_studentsQנוכחות FROM data_students where data_studentsQסדר = '{table:seder_now}' LIMIT 3300) AS limited_data_students GROUP BY data_studentsQid;"
+        },
+        "sum_times":{
+            "source": "query",
+            "query": "select * from times"
+        },
+        "sum_viza_now":{
+            "source": "query",
+            "query": "SELECT * FROM viza where vizaQמיום <= '1717133150000' and vizaQעד_יום >= '1717133150000'  "
+        
+        },
+        "sum_avg_seder":{
+            "source":"query",
+            "query": "SELECT data_studentsQid, CAST(AVG(data_studentsQנוכחות) AS SIGNED) AS summeryQlast_week_seder FROM (SELECT data_studentsQid, data_studentsQנוכחות FROM data_students where data_studentsQסדר = '{table:sum_seder}' LIMIT 3300) AS limited_data_students GROUP BY data_studentsQid;"
+        },
+        "sum_avg_all": {
+            "source":"query",
+            "query": "SELECT data_studentsQid, CAST(AVG(data_studentsQנוכחות) AS SIGNED) AS summeryQall FROM data_students GROUP BY data_studentsQid"
+        },
+        "sum_avg_to_day": {
+            "source":"query",
+            "query": "SELECT data_studentsQid, CAST(AVG(data_studentsQנוכחות) AS SIGNED) AS summeryQtoday FROM (SELECT data_studentsQid, data_studentsQנוכחות FROM data_students where data_studentsQיום = '{table:last_day}' LIMIT 3300) AS limited_data_students GROUP BY data_studentsQid;"
+        },
+        "last_seder":{
+            "source": "query",
+            "query": "SELECT data_studentsQסדר from data_students limit 1"
+        },
+        "last_day":{
+            "source": "query",
+            "query": "SELECT  data_studentsQיום from data_students limit 1"
+        },
+        "sum_seder":{
+            "source": "copy",
+            "table": "seder_now",
+            "manipulation":[
+                {"function": "if_empty", "table": "last_seder"}
+            ]
+        },
+        "sum_day":{
+            "source": "query",
+            "query": "select timesQיום from times where timesQיום = '{function:date_now}' and timesQמשעה <= '{function:time_now}' and timesQעד_שעה >= '{function:time_now}' ",
+            "manipulation": [
+                {"function": "if_empty", "table": "last_day"}
+            ]
+        },
+        "sum_insert_seder":{
+            "source": "query",
+            "query": "select info_studentsQid, info_studentsQשיעור,info_studentsQחדר, info_studentsQשם, info_studentsQמשפחה from info_students where info_studentsQשיעור = '{user:group}' ",
+            "manipulation": [
+                {"function":"add_column", "name_column":"data_studentsQנוכחות","value": "0.0"},
+                {"function":"add_column", "name_column":"data_studentsQסדר","value": "{table:seder_now}"},
+                {"function":"add_column", "name_column":"data_studentsQיום","value": "{function:date_now}"},
+                {"function":"rename_column", "columns":{"info_studentsQid": "data_studentsQid"}},
+                {"function":"merge_column","columns":["info_studentsQמשפחה","info_studentsQשם"],"new_name":"info_studentsQשם_מלא"},
+                {"function":"filter_column","columns":["info_studentsQשם","info_studentsQמשפחה"], "delete": true}
+            ]
+        },
+        "sum_data_seder":{
+            "source": "query",
+            "query": "SELECT info_studentsQשיעור, info_studentsQחדר, CONCAT(info_students.info_studentsQמשפחה ,' ', info_students.info_studentsQשם) AS info_studentsQשם_מלא FROM info_students WHERE info_studentsQשיעור = '{user:group}' ;",
+            "refresh": {"type":"timing", "timing": 30},
+            "manipulation": [
+                {"function":"if_empty", "table":"sum_insert_seder"}
+            ]
+        },
+        "sum_data_seder_now":{
+            "source":"query",
+            "query": "WHERE  data_studentsQסדר = '{table:sum_seder}' and data_studentsQיום = '{table:sum_day}'"
+        },
+        "sum_data_students":{
+            "source": "query",
+            "query": "SELECT info_students.info_studentsQשיעור , data_students.* FROM info_students LEFT JOIN data_students ON info_students.info_studentsQid = data_students.data_studentsQid WHERE info_studentsQשיעור = '{user:group}' ;",
+            "manipulation": [{
+                "function": "merge",
+                "right": "tblsum_times", 
+                "left": "self",
+                "right_on": ["timesQיום", "timesQסדר"],
+                "left_on": ["data_studentsQיום", "data_studentsQסדר"] 
+            }]
+        },
+        "main_table": {
+            "source": "copy",
+            "table": "sum_data_seder",
+            "manipulation": [
+                {
+                    "function": "merge",
+                    "right": "tblsum_avg_all",
+                    "left": "self",
+                    "right_on": "data_studentsQid",
+                    "left_on": "data_studentsQid"
+                },
+                {
+                    "function": "merge",
+                    "right": "tblsum_avg_to_day", 
+                    "left": "self",
+                    "right_on": "data_studentsQid",
+                    "left_on": "data_studentsQid"
+                },
+                {
+                    "function": "merge",
+                    "right": "tblsum_viza_now", 
+                    "left": "self",
+                    "right_on": "vizaQid",
+                    "left_on": "data_studentsQid"
+                },
+                {
+                    "function": "merge",
+                    "right": "tblsum_times", 
+                    "left": "self",
+                    "right_on": ["timesQיום", "timesQסדר"],
+                    "left_on": ["data_studentsQיום", "data_studentsQסדר"] 
+                }
+            ],
+            "refresh": {"type":"timing", "timing": 30}
+
+        },
+        "times":{
+            "source": "query",
+            "query": "select * from times"
+            
+        },
+        "insert_seder": {
+            "source": "query",
+            
+            "query": "select info_studentsQid, info_studentsQשם, info_studentsQמשפחה from info_students where info_studentsQשיעור = '{user:group}' ",
+            "manipulation": [
+                {"function": "add_column", "name_column": "data_studentsQנוכחות","value": "0.0"},
+                {"function": "add_column", "name_column": "data_studentsQסדר","value": "{table:seder_now}"},
+                {"function": "add_column", "name_column": "data_studentsQיום","value": "{function:date_now}"},
+                {"function": "rename_column", "columns": {"info_studentsQid": "data_studentsQid"}},
+                {"function": "merge_column","columns": ["info_studentsQמשפחה","info_studentsQשם"],"new_name":"info_studentsQשם_מלא"},
+                {
+                    "function": "merge",
+                    "right": "tbltimes", 
+                    "left": "self",
+                    "right_on": ["timesQיום", "timesQסדר"],
+                    "left_on": ["data_studentsQיום", "data_studentsQסדר"] 
+                },
+                {"function": "filter_column","columns": ["info_studentsQשם","info_studentsQמשפחה"], "delete": true}
+            ]
+        },
+        "all_data_by_seder": {
+            "source": "query",
+            "query": " SELECT  data_students.*, info_students.* FROM data_students LEFT JOIN info_students ON data_students.data_studentsQid = info_students.info_studentsQid ; ",
+            "refresh": {"type":"timing", "timing": 30},
+            "manipulation": [
+                {
+                "function": "pivot_table",
+                "values":"data_studentsQנוכחות",
+                "index":["info_studentsQשם",
+                "info_studentsQמשפחה",
+                "data_studentsQid",
+                "data_studentsQיום"],
+                "columns":["data_studentsQסדר"]
+            }
+            ]
+        },
+        "summery_seder_month": {
+            "source": "query",
+            "query": "SELECT data_studentsQid, SUM(data_studentsQנוכחות) AS data_studentsQנוכחות FROM data_students  GROUP BY data_studentsQid;",
+            "manipulation": []
+        },
+        
+        "summery_table": {
+            "source": "query",
+            "query": "SELECT info_studentsQid FROM info_students",
+            "manipulation": [
+                {
+                    "function": "merge",
+                    "right": "tblsummery_seder_month", 
+                    "left": "self",
+                    "right_on": "data_studentsQid",
+                    "left_on": "info_studentsQid"
+                }
+            ]
+        },
+        "manager_info_students":{
+            "source": "query",
+            "query": "SELECT * FROM info_students"
+        },
+        "manager_data_students": {
+            "source": "query",
+            "query": "SELECT * FROM data_students LEFT JOIN times ON data_studentsQסדר = timesQסדר and data_studentsQיום = timesQיום limit 2000"
+        },
+        "manager_viza":{
+            "source": "query",
+            "query": "SELECT * FROM viza"
+        },
+        "group_by_data":{
+            "source": "query",
+            "query": " SELECT  data_students.*, info_students.* FROM data_students LEFT JOIN info_students ON data_students.data_studentsQid = info_students.info_studentsQid ; ",
+            "manipulation": [
+                {
+                    "function": "group_by",
+                    "columns": "all",
+                    "summery_column": "data_studentsQנוכחות",
+                    "type_summery": "mean"
+                }
+            ]
+        },
+        "tomorrow_seder":{
+        "source": "query",
+        "query": "select * from times where timesQיום = '{function:tomorrow}' limit 1"
+    },
+        "next_seder":{
+            "source": "query",
+            "query": "select * from times where timesQיום = '{function:date_now}' and timesQמשעה  >= '{function:time_now}' and timesQעד_שעה >= '{function:time_now}' limit 1"  ,     
+            "manipulation": [
+                {"function":"if_empty", "table":"tomorrow_seder"}
+            ]
+        },
+     "seder_info": {
+        "source": "query",
+        "query": "SELECT * from times where timesQסדר = '{table:seder_now}' and timesQיום = '{function:date_now}' limit 1"
+        }
+    },
+    "tamplates": {
+        "manager_info_students": {
+            "table": "manager_info_students",
+            "size": { "xs": 7,"sm": 7,"md": 7},
+            "type_tamplate": "table_summery"
+        },  
+        "manager_data_students": {
+            "table": "manager_data_students",
+            "size": { "xs": 7,"sm": 7,"md": 7},
+            "type_tamplate": "table_summery"
+       },
+       "manager_viza": {
+        "table": "manager_viza",
+        "size": { "xs": 7,"sm": 7,"md": 7},
+        "type_tamplate": "table_summery"
+    },
+        "all_sdorim":{
+            "table": "sum_data_students",
+            "size": { "xs": 7,"sm": 7,"md": 7},
+            "type_tamplate": "table_summery"
+        },
+        "next_seder": {
+            "table": "next_seder",
+            "size": { "xs": 7,"sm": 7,"md": 7},
+            "type_tamplate": "dict"
+       },
+        "screen_students": {
+            "table": "data_seder_now",
+            "tamplate_if_empty": "next_seder",
+            "type_tamplate": "list",
+            "size": {"xs":7,"sm":7,"md":7},
+            "translate": {
+                "id": "data_studentsQid",
+                "describe": "info_studentsQשם_מלא",
+                "check": "data_studentsQנוכחות"
+            },
+            "check_value": {
+                "true": "100.0",
+                "false": "0.0"
+            },
+            "style": {
+                "xs": 4
+            },
+            "event":[
+
+                {"timing": "onclick", "event": "update_table", "table": "data_students"}
+            ]
+        },
+        "html_seder":{
+            "size": {"xs": 7,"sm": 7,"md":7},
+            "type_tamplate": "dict",
+            "tamplate_if_empty": "screen_students",
+            "table": "seder_info",
+            "event":[
+                {"timing": "onclick", "event": "update_table", "table": "data_students"}
+            ]
+        },
+        "table_info":{
+            "size": {"xs": 7,"sm": 7,"md":7},
+            "type_tamplate": "table_summery",
+            "tamplate_if_empty": "screen_students",
+            "table": "main_table",
+            "event":[
+                {"timing": "onclick", "event": "update_table", "table": "data_students"}
+            ]
+        }
+        ,
+        "cards":{
+            "size": {"xs":4,"sm":4,"md":4},
+            "type_tamplate": "cards",
+            "tamplate_if_empty": "screen_students",
+            "table": "group_by_data",
+            "varible": "group",
+            "event":[
+                {"timing": "onclick", "event": "update_table", "table": "data_students"}
+            ]
+        },
+        "buttons":{
+            "size": {"xs":4,"sm":4,"md":4},
+            "type_tamplate": "buttons",
+            "tamplate_if_empty": "screen_students",
+            "table": "group_by_data",
+            "varible": "group",
+            "event":[
+                {"timing": "onclick", "event": "update_table", "table": "data_students"}
+            ]
+        }
+    },
+    "events": {
+        "update_table": {
+            "type_query": "table_query",
+            "response": {
+                "success": "הנתונים עודכנו בהצלחה", 
+                "fail":"ישנה בעיה עם העידכון"
+            },
+            "depends": ["data_seder_now", "seder_now"],
+            "query": "REPLACE INTO name_table table_query"
+        }
+    },
+    "users": {
+        "admin": {
+            "screen_demo": ["screen_students", "cards", "buttons"]
+        },
+        "noraml":{
+            "screen_demo": ["screen_students", "cards"]
+        }
+    }
+}
